@@ -12,6 +12,8 @@ path = var_set.path #引入设置路径
 rtmp = var_set.rtmp #引入设置的rtmp网址
 live_code = var_set.live_code   #引入设置rtmp参数
 
+ffmpeg_code = ''    #当前推流的ffmpeg命令
+
 #格式化时间，暂时没啥用，以后估计也没啥用
 def convert_time(n):
     s = n%60
@@ -48,8 +50,9 @@ while True:
                     pic_files.sort()    #排序数组
                     pic_ran = random.randint(0,len(pic_files)-1)    #随机选一张图片
                     #推流
-                    print('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/downloads/'+f+'" -vf ass="'+path+"/downloads/"+f.replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
-                    os.system('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/downloads/'+f+'" -vf ass="'+path+"/downloads/"+f.replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
+                    ffmpeg_code = 'ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/downloads/'+f+'" -vf ass="'+path+"/downloads/"+f.replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -c:a copy -c:v h264_omx -f flv "'+rtmp+live_code+'"'
+                    print(ffmpeg_code)
+                    os.system(ffmpeg_code)
                 try:    #放完后删除mp3文件、删除字幕、删除点播信息
                     shutil.move(path+'/downloads/'+f,path+'/default_mp3/')
                     shutil.move(path+'/downloads/'+f.replace(".mp3",'')+'.ass',path+'/default_mp3/')
@@ -59,11 +62,12 @@ while True:
                 except:
                     print('delete error')
                 count+=1    #点播统计加一
-            if((f.find('ok.flv') != -1) and (f.find('.download') == -1) and (f.find('rendering') == -1)):   #如果是有ok标记的flv文件
+            elif((f.find('ok.flv') != -1) and (f.find('.download') == -1) and (f.find('rendering') == -1)):   #如果是有ok标记的flv文件
                 print('flv:'+f)
                 #直接推流
-                print('ffmpeg -re -i "'+path+"/downloads/"+f+'" -vcodec copy -acodec copy -f flv "'+rtmp+live_code+'"')
-                os.system('ffmpeg -re -i "'+path+"/downloads/"+f+'" -vcodec copy -acodec copy -f flv "'+rtmp+live_code+'"')
+                ffmpeg_code = 'ffmpeg -re -i "'+path+"/downloads/"+f+'" -c copy -f flv "'+rtmp+live_code+'"'
+                print(ffmpeg_code)
+                os.system(ffmpeg_code)
                 os.rename(path+'/downloads/'+f,path+'/downloads/'+f.replace("ok",""))   #修改文件名，以免下次循环再次匹配
                 _thread.start_new_thread(remove_v, (f.replace("ok",""),))   #异步搬走文件，以免推流卡顿
                 count+=1    #点播统计加一
@@ -82,15 +86,14 @@ while True:
                 print('mp3 long:'+convert_time(seconds))
                 #推流
                 if(os.path.isfile(path+'/default_mp3/'+mp3_files[mp3_ran].replace(".mp3",'')+'.ass')):
-                    print('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+"/default_mp3/"+mp3_files[mp3_ran].replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
-                    os.system('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+"/default_mp3/"+mp3_files[mp3_ran].replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
+                    ffmpeg_code = 'ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+"/default_mp3/"+mp3_files[mp3_ran].replace(".mp3",'')+'.ass'+'" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -c:a copy -c:v h264_omx -f flv "'+rtmp+live_code+'"'
                 else:
-                    print('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+'/default.ass" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
-                    os.system('ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+'/default.ass" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -acodec aac -b:a 192k -c:v h264_omx -f flv "'+rtmp+live_code+'"')
-            if(mp3_files[mp3_ran].find('.flv') != -1):  #如果为flv视频
+                    ffmpeg_code = 'ffmpeg -re -loop 1 -r 3 -t '+str(int(seconds))+' -f image2 -i "'+path+'/default_pic/'+pic_files[pic_ran]+'" -i "'+path+'/default_mp3/'+mp3_files[mp3_ran]+'" -vf ass="'+path+'/default.ass" -pix_fmt yuv420p -crf 24 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -c:a copy -c:v h264_omx -f flv "'+rtmp+live_code+'"'
+            elif(mp3_files[mp3_ran].find('.flv') != -1):  #如果为flv视频
                 #直接推流
-                print('ffmpeg -re -i "'+path+"/default_mp3/"+mp3_files[mp3_ran]+'" -vcodec copy -acodec copy -f flv "'+rtmp+live_code+'"')
-                os.system('ffmpeg -re -i "'+path+"/default_mp3/"+mp3_files[mp3_ran]+'" -vcodec copy -acodec copy -f flv "'+rtmp+live_code+'"')
+                ffmpeg_code = 'ffmpeg -re -i "'+path+"/default_mp3/"+mp3_files[mp3_ran]+'" -c copy -f flv "'+rtmp+live_code+'"'
+            print(ffmpeg_code)
+            os.system(ffmpeg_code)
     except Exception as e:
         print(e)
 
