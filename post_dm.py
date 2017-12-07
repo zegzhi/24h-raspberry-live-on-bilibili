@@ -17,6 +17,8 @@ path = var_set.path         #引入设置路径
 roomid = var_set.roomid     #引入设置房间号
 cookie = var_set.cookie     #引入设置cookie
 download_api_url = var_set.download_api_url #引入设置的音乐下载链接获取接口
+admin_user = var_set.admin_user             #引入管理员用户昵称
+miao_user = var_set.miao_user               #引入点播喵用户昵称
 
 dm_lock = False         #弹幕发送锁，用来排队
 encode_lock = False     #视频渲染锁，用来排队
@@ -80,7 +82,7 @@ def get_download_url(s, t, user, song = "nothing"):
     if(clean_files()):  #检查空间是否在设定值以内，并自动删除多余视频缓存
         send_dm_long('树莓存储空间已爆炸，请联系up')
         return
-    send_dm_long('正在下载'+t+str(s))
+    send_dm_long('开始下载')
     print('[log]getting url:'+t+str(s))
     params = urllib.parse.urlencode({t: s}) #格式化参数
     f = urllib.request.urlopen(download_api_url + "?%s" % params)   #设定获取的网址
@@ -103,7 +105,7 @@ def get_download_url(s, t, user, song = "nothing"):
             else:   #当用关键字搜索点歌时
                 ass_maker.make_ass(filename,'当前网易云id：'+str(s)+"\\N点播关键词："+song+"\\N点播人："+user,path,lyric,tlyric)   #生成字幕
                 ass_maker.make_info(filename,'id：'+str(s)+",关键词："+song+",点播人："+user,path)    #生成介绍信息，用来查询
-            send_dm_long(t+str(s)+'下载完成，已加入播放队列')
+            send_dm_long('一个歌曲下载完成，加入播放列表')
             print('[log]已添加排队项目：'+t+str(s))
         elif(t == 'mv'):    #当参数为mv时
             urllib.request.urlretrieve(url, path+'/downloads/'+filename+'.mp4') #下载mv
@@ -113,16 +115,16 @@ def get_download_url(s, t, user, song = "nothing"):
             else:   #当用关键字搜索点mv时
                 ass_maker.make_ass(filename+'ok','当前MV网易云id：'+str(s)+"\\NMV点播关键词："+song+"\\N点播人："+user,path)#生成字幕
                 ass_maker.make_info(filename+'ok','MVid：'+str(s)+",关键词："+song+",点播人："+user,path)#生成介绍信息，用来查询
-            send_dm_long(t+str(s)+'下载完成，等待渲染')
+            send_dm_long('一个MV下载完成，等待渲染')
             while (encode_lock):    #渲染锁，如果现在有渲染任务，则无限循环等待
                 time.sleep(1)   #等待
             encode_lock = True  #进入渲染，加上渲染锁，防止其他视频一起渲染
-            send_dm_long(t+str(s)+'正在渲染')
+            send_dm_long('一个MV开始渲染')
             os.system('ffmpeg -i "'+path+'/downloads/'+filename+'.mp4" -s 1280x720 -vf ass="'+path+"/downloads/"+filename+'ok.ass'+'" -c:v libx264 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -tune fastdecode -acodec aac -b:a 192k "'+path+'/downloads/'+filename+'rendering.flv"')
             encode_lock = False #关闭渲染锁，以便其他任务继续渲染
             del_file(filename+'.mp4')   #删除渲染所用的原文件
             os.rename(path+'/downloads/'+filename+'rendering.flv',path+'/downloads/'+filename+'ok.flv') #重命名文件，标记为渲染完毕（ok）
-            send_dm_long(t+str(s)+'渲染完毕，已加入播放队列')
+            send_dm_long('一个MV渲染完毕，加入播放列表')
         try:    #记录日志，已接近废弃
             log_file = open(path+'/songs.log', 'a')
             log_file.writelines(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())) + ','+user+','+t+str(s)+'\r\n')
@@ -143,7 +145,8 @@ def playlist_download(id,user):
     f = urllib.request.urlopen(download_api_url + "?%s" % params)   #设定获取的网址
     try:
         playlist = json.loads(f.read().decode('utf-8'))  #获取结果，并反序化
-        send_dm_long('正在下载歌单：'+playlist['playlist']['name']+'，共'+str(len(playlist['playlist']['tracks']))+'首')
+        #send_dm_long('正在下载歌单：'+playlist['playlist']['name']+'，共'+str(len(playlist['playlist']['tracks']))+'首')
+        send_dm_long('下载歌单，共'+str(len(playlist['playlist']['tracks']))+'首')
     except Exception as e:  #防炸
         print('shit')
         print(e)
@@ -164,22 +167,22 @@ def download_bilibili(video_url,user):
         print('[log]downloading bilibili video:'+str(video_url))
         video_info = json.loads(os.popen('you-get '+video_url+' --json').read())    #获取视频标题，标题错误则说明点播参数不对，跳到except
         video_title = video_info['title']   #获取标题
-        send_dm_long('正在下载'+video_title)
+        #send_dm_long('正在下载'+video_title)
         #send_dm('注意，视频下载十分费时，请耐心等待')
         filename = str(time.mktime(datetime.datetime.now().timetuple()))    #用时间戳设定文件名
         os.system('you-get '+video_url+' --format=flv -o '+path+'/downloads -O '+filename+'rendering1') #下载视频文件
         ass_maker.make_ass(filename+'ok',"点播人："+user+"\\N番剧："+video_title+"\\N"+video_url,path) #生成字幕
         ass_maker.make_info(filename+'ok','番剧：'+video_title+",点播人："+user,path)  #生成介绍信息，用来查询
-        send_dm_long('番剧'+video_title+'下载完成，等待渲染')
+        #send_dm_long('番剧'+video_title+'下载完成，等待渲染')
         while (encode_lock):    #渲染锁，如果现在有渲染任务，则无限循环等待
             time.sleep(1)   #等待
         encode_lock = True  #进入渲染，加上渲染锁，防止其他视频一起渲染
-        send_dm_long('番剧'+video_title+'正在渲染')
-        os.system('ffmpeg -i "'+path+'/downloads/'+filename+'rendering1.flv" -s 1280x720 -vf ass="'+path+"/downloads/"+filename+'ok.ass'+'" -c:v libx264 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -tune fastdecode -acodec aac -b:a 192k "'+path+'/downloads/'+filename+'rendering.flv"')
+        #send_dm_long('番剧'+video_title+'正在渲染')
+        os.system('ffmpeg -i "'+path+'/downloads/'+filename+'rendering1.flv" -s 1280x720 -vf ass="'+path+"/downloads/"+filename+'ok.ass'+'" -c:v libx264 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -tune fastdecode -c:a copy "'+path+'/downloads/'+filename+'rendering.flv"')
         encode_lock = False #关闭渲染锁，以便其他任务继续渲染
         del_file(filename+'rendering1.flv') #删除渲染所用的原文件
         os.rename(path+'/downloads/'+filename+'rendering.flv',path+'/downloads/'+filename+'ok.flv') #重命名文件，标记为渲染完毕（ok）
-        send_dm_long('番剧'+video_title+'渲染完毕，已加入播放队列')
+        #send_dm_long('番剧'+video_title+'渲染完毕，已加入播放队列')
     except: #报错提示，一般只会出现在获取标题失败时出现，就是点播参数不对
         send_dm_long('出错了：请检查命令或重试')
         
@@ -194,23 +197,23 @@ def download_av(video_url,user):
         print('[log]downloading bilibili video:'+str(video_url))
         video_info = json.loads(os.popen('you-get '+video_url+' --json').read())
         video_title = video_info['title']
-        send_dm_long('正在下载'+video_title)
+        send_dm_long('正在下载')
         #send_dm('注意，视频下载十分费时，请耐心等待')
         filename = str(time.mktime(datetime.datetime.now().timetuple()))
         os.system('you-get '+video_url+' --format=flv -o '+path+'/downloads -O '+filename+'rendering1')
         print('you-get '+video_url+' --format=flv -o '+path+'/downloads -O '+filename+'rendering1')
         ass_maker.make_ass(filename+'ok','点播人：'+user+"\\N视频："+video_title+"\\N"+video_url,path)
         ass_maker.make_info(filename+'ok','视频：'+video_title+",点播人："+user,path)
-        send_dm_long('视频'+video_title+'下载完成，等待渲染')
+        send_dm_long('一个视频下载完成，等待渲染')
         while (encode_lock):
             time.sleep(1)
         encode_lock = True
-        send_dm_long('视频'+video_title+'正在渲染')
+        send_dm_long('一个视频开始渲染')
         os.system('ffmpeg -i "'+path+'/downloads/'+filename+'rendering1.flv" -s 1280x720 -vf ass="'+path+"/downloads/"+filename+'ok.ass'+'" -c:v libx264 -preset ultrafast -maxrate '+var_set.maxbitrate+'k -tune fastdecode -acodec aac -b:a 192k "'+path+'/downloads/'+filename+'rendering.flv"')
         encode_lock = False
         del_file(filename+'rendering1.flv')
         os.rename(path+'/downloads/'+filename+'rendering.flv',path+'/downloads/'+filename+'ok.flv')
-        send_dm_long('视频'+video_title+'渲染完毕，已加入播放队列')
+        send_dm_long('一个视频渲染完毕，加入播放队列')
     except:
         send_dm_long('出错了：请检查命令或重试')
 
@@ -253,14 +256,14 @@ def pick_msg(s, user):
     global jump_to_next_counter #切歌请求次数统计
     global encode_lock  #视频渲染任务锁
     global rp_lock
-    if ((user=='晨旭') | (user=='摘希喵喵喵')):    #debug使用，请自己修改
+    if (user in admin_user):    #debug使用
         if(s=='锁定'):
             rp_lock = True
             send_dm_long('已锁定点播功能，不响应任何弹幕')
         if(s=='解锁'):
             rp_lock = False
             send_dm_long('已解锁点播功能，开始响应弹幕请求')
-    if((user == '接待喵') | rp_lock):  #防止自循环
+    if(user == miao_user | rp_lock):  #防止自循环
         return
     #下面的不作解释，很简单一看就懂
     if(s.find('mvid+') == 0):
@@ -318,7 +321,7 @@ def pick_msg(s, user):
             send_dm_long('有渲染任务，无法切歌')
             return
         jump_to_next_counter += 1   #切歌次数统计加一
-        if((user=='晨旭') | (user=='摘希喵喵喵')): #debug使用，请自己修改
+        if(user in admin_user): #debug使用
             jump_to_next_counter=5
         if(jump_to_next_counter < 5):   #次数未达到五次
             send_dm_long('已收到'+str(jump_to_next_counter)+'次切歌请求，达到五次将切歌')
@@ -379,7 +382,7 @@ def pick_msg(s, user):
                 songs_count += 1
         send_dm_long('渲染列表展示完毕，一共'+str(songs_count)+'个')
     elif (s.find('番剧') == 0):
-        send_dm_long('您的直播间因“禁止盗播新番”，已被管x员“切断”，请更改直播内容。')
+        send_dm_long('因版权原因，不允许点播番剧。')
         return
         try:
             send_dm_long('已收到'+user+'的指令')
@@ -411,10 +414,6 @@ def pick_msg(s, user):
         _thread.start_new_thread(playlist_download, (s.replace('歌单', '', 1),user))
     # else:
     #     print('not match anything')
-
-
-
-
 
 #发送弹幕函数，通过post完成，具体可以自行使用浏览器，进入审查元素，监控network选项卡研究
 def send_dm(s):
