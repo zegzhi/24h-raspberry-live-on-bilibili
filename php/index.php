@@ -40,6 +40,11 @@ function get_playlist($id)
     $data=json_decode($result, true);
     return $data['tlyric']['lyric'];
 }
+function get_detail($id)
+{
+    $api = new NeteaseMusicAPI();
+    return $api->detail($id);
+}
 
 if(!empty($_GET['debug']))
 {
@@ -73,6 +78,12 @@ if(!empty($_GET['debug']))
         $result = $api->playlist($_GET['playlist']);
         echo $result;
     }
+    elseif(!empty($_GET['detail']))
+    {
+        $api = new NeteaseMusicAPI();
+        $result = $api->detail($_GET['detail']);
+        echo $result;
+    }
 }
 elseif(!empty($_GET['id']))
 {
@@ -95,6 +106,10 @@ elseif(!empty($_GET['playlist']))
     $api = new NeteaseMusicAPI();
     $result = $api->playlist($_GET['playlist']);
     echo $result;
+}
+elseif(!empty($_GET['detail']))
+{
+    echo get_detail($_GET['detail']);
 }
 else
 {
